@@ -1,2 +1,5 @@
 .env
 clients.json
+__pycache__/
+*.pyc
+*.pyo
