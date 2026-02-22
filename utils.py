@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
@@ -82,8 +83,25 @@ def get_client_names() -> List[str]:
 # API clients
 # ---------------------------------------------------------------------------
 
+def build_url_aliases(urls: List[str]) -> tuple:
+    """
+    Map each URL to a short alias (REF001, REF002, …) for use in prompts.
+
+    Returns:
+        (url_to_alias, alias_to_url) — both dicts.
+    """
+    url_to_alias = {url: f"REF{i + 1:03d}" for i, url in enumerate(urls)}
+    alias_to_url = {v: k for k, v in url_to_alias.items()}
+    return url_to_alias, alias_to_url
+
+
 def get_anthropic_client() -> Anthropic:
     return Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+
+def get_openai_client():
+    from openai import OpenAI
+    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def get_tavily_client() -> TavilyClient:
@@ -103,9 +121,10 @@ def tavily_search(query: str, days: int = 7, max_results: int = 8) -> List[Dict]
     Skips the query (returns []) if Tavily doesn't respond within _TAVILY_TIMEOUT seconds.
     """
     client = get_tavily_client()
+    start_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
 
     def _search():
-        return client.search(query=query, days=days, max_results=max_results)
+        return client.search(query=query, topic="news", start_date=start_date, max_results=max_results)
 
     try:
         with ThreadPoolExecutor(max_workers=1) as executor:
@@ -117,6 +136,7 @@ def tavily_search(query: str, days: int = 7, max_results: int = 8) -> List[Dict]
                 "url": r.get("url", ""),
                 "snippet": r.get("content", ""),
                 "source": "tavily",
+                "pub_date": r.get("published_date"),
             }
             for r in response.get("results", [])
             if r.get("url")
@@ -129,19 +149,3 @@ def tavily_search(query: str, days: int = 7, max_results: int = 8) -> List[Dict]
         return []
 
 
-def jina_fetch(url: str) -> Optional[str]:
-    """Fetch full article text via Jina reader API. Returns None on failure/paywall."""
-    jina_key = os.getenv("JINA_API_KEY")
-    headers = {"Authorization": f"Bearer {jina_key}"} if jina_key else {}
-    try:
-        response = requests.get(
-            f"https://r.jina.ai/{url}",
-            headers=headers,
-            timeout=20,
-        )
-        if response.status_code == 200 and len(response.text) > 200:
-            return response.text
-        return None
-    except Exception as e:
-        logger.warning(f"Jina fetch failed for {url}: {e}")
-        return None

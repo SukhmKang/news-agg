@@ -15,8 +15,8 @@ import os
 import sys
 
 from utils import load_articles, save_articles
-from pipeline.collect import run_collection
-from pipeline.dynamic_search import run_dynamic_search
+from pipeline.collect import run_collection, run_tavily_collection
+from pipeline.dedup import deduplicate_articles
 from pipeline.filter import run_filter
 from pipeline.enrich import run_enrichment
 
@@ -48,21 +48,24 @@ def run() -> None:
     existing_urls = {a["url"] for a in existing}
     logger.info(f"Loaded {len(existing)} existing articles from store")
 
-    # Step 1a: static RSS + Google News collection
-    new_articles = run_collection(existing_urls)
+    # Step 1a: RSS + Google News RSS collection
+    rss_articles = run_collection(existing_urls)
 
-    # Step 1b: Claude-driven dynamic Tavily queries
-    dynamic_articles = run_dynamic_search(new_articles, existing_urls)
+    # Step 1b: static Tavily queries + client queries
+    tavily_articles = run_tavily_collection(existing_urls)
 
-    all_new = new_articles + dynamic_articles
-    if not all_new:
+    new_articles = rss_articles + tavily_articles
+    if not new_articles:
         logger.info("No new articles found — nothing to do")
         return
 
-    logger.info(f"Total new candidates: {len(all_new)}")
+    logger.info(f"Total new candidates: {len(new_articles)} ({len(rss_articles)} RSS, {len(tavily_articles)} Tavily)")
 
-    # Step 2: relevance + actionability scoring; drop below threshold
-    passing = run_filter(all_new)
+    # Step 1c: semantic deduplication — merge near-identical stories
+    new_articles = deduplicate_articles(new_articles)
+
+    # Step 2: keyword pre-filter + Claude relevance scoring; drop below threshold
+    passing = run_filter(new_articles)
     if not passing:
         logger.info("No articles passed filtering — nothing to store")
         return

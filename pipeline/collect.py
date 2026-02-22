@@ -14,8 +14,8 @@ from urllib.parse import urlencode
 
 import feedparser
 
-from config import ARTICLE_DAYS_WINDOW, GOOGLE_NEWS_QUERIES, MENA_KEYWORDS, RSS_FEEDS
-from utils import is_within_window
+from config import ARTICLE_DAYS_WINDOW, GOOGLE_NEWS_QUERIES, LOG_COLLECTED_TITLES, MAX_ARTICLES_PER_FEED, MENA_KEYWORDS, RSS_FEEDS, TAVILY_DAYS, TAVILY_MAX_RESULTS, TAVILY_STATIC_QUERIES
+from utils import is_within_window, load_clients, tavily_search
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,17 @@ def _fetch_feed(
         existing_urls.add(link)
         new_articles.append(article)
 
-    logger.info(f"  {source}: {len(new_articles)} new articles")
+    # Sort newest-first by pub_date; articles with no date go to the end.
+    new_articles.sort(key=lambda a: a["pub_date"] or "", reverse=True)
+
+    if len(new_articles) > MAX_ARTICLES_PER_FEED:
+        new_articles = new_articles[:MAX_ARTICLES_PER_FEED]
+        logger.info(f"  {source}: {len(new_articles)} new articles (capped at {MAX_ARTICLES_PER_FEED})")
+    else:
+        logger.info(f"  {source}: {len(new_articles)} new articles")
+    if LOG_COLLECTED_TITLES and new_articles:
+        for a in new_articles:
+            logger.info(f"    | {a['title']}")
     return new_articles
 
 
@@ -146,3 +156,63 @@ def run_collection(existing_urls: set) -> List[Dict]:
 
     logger.info(f"Step 1a complete: {len(all_articles)} new articles collected")
     return all_articles
+
+
+def run_tavily_collection(existing_urls: set) -> List[Dict]:
+    """
+    Step 1b: Run static Tavily queries + per-client queries and return new articles.
+
+    Static queries target the three BD categories (market entry, SWF outbound,
+    PR/policy risk). Client queries surface any news connecting known clients to
+    the UAE/Saudi/MENA region.
+
+    Args:
+        existing_urls: Set of URLs already in the article store; updated in place.
+
+    Returns:
+        List of new article dicts (not yet scored or enriched).
+    """
+    run_date = datetime.now(timezone.utc).date().isoformat()
+
+    # Build client queries: two per client using the primary name
+    client_queries: List[str] = []
+    for c in load_clients():
+        name = c["name"]
+        client_queries.append(f"{name} UAE OR Saudi Arabia OR MENA OR Gulf")
+        client_queries.append(f"{name} Middle East")
+
+    all_queries = TAVILY_STATIC_QUERIES + client_queries
+    logger.info(
+        f"Step 1b — {len(TAVILY_STATIC_QUERIES)} static + {len(client_queries)} client "
+        f"Tavily queries ({len(all_queries)} total):"
+    )
+
+    new_articles: List[Dict] = []
+    for query in all_queries:
+        results = tavily_search(query, days=TAVILY_DAYS, max_results=TAVILY_MAX_RESULTS)
+        added = 0
+        for r in results:
+            url = r.get("url", "")
+            if url and url not in existing_urls:
+                existing_urls.add(url)
+                new_articles.append({
+                    "url": url,
+                    "title": r.get("title", ""),
+                    "snippet": r.get("snippet", "")[:1000],
+                    "source": r.get("source", "tavily"),
+                    "pub_date": None,
+                    "score": None,
+                    "score_reason": None,
+                    "category": None,
+                    "client_match": [],
+                    "full_text": None,
+                    "corroboration": [],
+                    "enriched": False,
+                    "run_date": run_date,
+                })
+                added += 1
+        if added:
+            logger.info(f"  [{added}] {query}")
+
+    logger.info(f"Step 1b complete: {len(new_articles)} new articles from Tavily")
+    return new_articles
