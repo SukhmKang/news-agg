@@ -12,7 +12,12 @@ Create a `.env` file in the project root:
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
-TAVILY_API_KEY=tvly-...
+
+# Multiple Tavily keys (recommended) — rotated round-robin to spread rate limit load
+TAVILY_API_KEYS=tvly-key1,tvly-key2,tvly-key3
+
+# Single key fallback (used if TAVILY_API_KEYS is not set)
+# TAVILY_API_KEY=tvly-...
 ```
 
 Create a `clients.json` file (gitignored) listing your tracked clients:

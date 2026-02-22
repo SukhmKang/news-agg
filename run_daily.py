@@ -30,8 +30,11 @@ logger = logging.getLogger(__name__)
 
 def _check_env() -> None:
     """Fail fast if required API keys are missing."""
-    required = ["ANTHROPIC_API_KEY", "TAVILY_API_KEY"]
-    missing = [k for k in required if not os.getenv(k, "").strip()]
+    missing = []
+    if not os.getenv("ANTHROPIC_API_KEY", "").strip():
+        missing.append("ANTHROPIC_API_KEY")
+    if not os.getenv("TAVILY_API_KEYS", "").strip() and not os.getenv("TAVILY_API_KEY", "").strip():
+        missing.append("TAVILY_API_KEYS (or TAVILY_API_KEY)")
     if missing:
         raise EnvironmentError(
             f"Missing required environment variables: {', '.join(missing)}. "

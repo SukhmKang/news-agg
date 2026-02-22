@@ -1,3 +1,4 @@
+import itertools
 import json
 import logging
 import os
@@ -104,8 +105,27 @@ def get_openai_client():
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
+def _load_tavily_keys() -> List[str]:
+    """Load Tavily API keys from env. Supports a comma-separated TAVILY_API_KEYS
+    (multiple keys) or falls back to a single TAVILY_API_KEY."""
+    multi = os.getenv("TAVILY_API_KEYS", "")
+    keys = [k.strip() for k in multi.split(",") if k.strip()]
+    if not keys:
+        single = os.getenv("TAVILY_API_KEY", "").strip()
+        if single:
+            keys = [single]
+    if not keys:
+        raise EnvironmentError("No Tavily API key found. Set TAVILY_API_KEYS or TAVILY_API_KEY in .env")
+    logger.info(f"Loaded {len(keys)} Tavily API key(s)")
+    return keys
+
+
+_tavily_key_cycle = itertools.cycle(_load_tavily_keys())
+
+
 def get_tavily_client() -> TavilyClient:
-    return TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+    """Return a TavilyClient using the next key in the round-robin rotation."""
+    return TavilyClient(api_key=next(_tavily_key_cycle))
 
 
 # ---------------------------------------------------------------------------

@@ -120,6 +120,11 @@ The `aliases` field is used during scoring to catch alternative names and ticker
 ### Corroboration looks irrelevant
 - Tavily corroboration results are filtered to a minimum relevance score of 0.8 (on Tavily's internal 0–1 scale). Adjust this threshold in `pipeline/enrich.py` if needed.
 
+### Hitting Tavily rate limits
+- Add more API keys to `.env` as a comma-separated list: `TAVILY_API_KEYS=tvly-key1,tvly-key2,tvly-key3`
+- Keys are rotated round-robin across all Tavily calls in a run, spreading the load evenly
+- A single `TAVILY_API_KEY` still works if only one key is available
+
 ---
 
 ## Logging flags
