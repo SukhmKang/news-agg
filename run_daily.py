@@ -14,7 +14,7 @@ import logging
 import os
 import sys
 
-from utils import load_articles, save_articles
+from utils import load_articles, save_articles, token_tracker
 from pipeline.collect import run_collection, run_tavily_collection
 from pipeline.dedup import deduplicate_articles
 from pipeline.filter import run_filter
@@ -84,6 +84,7 @@ def run() -> None:
         f"=== Daily pipeline complete: {len(enriched)} articles added, "
         f"{len(updated)} total in store ==="
     )
+    logger.info(token_tracker.summary())
 
 
 if __name__ == "__main__":

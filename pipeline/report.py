@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from config import CATEGORY_ORDER, MODEL_REPORT_BATCH, MODEL_REPORT_SYNTH, REPORT_BATCH_SIZE, REPORT_MIN_SCORE, REPORTS_DIR
-from utils import build_url_aliases, get_anthropic_client, get_openai_client
+from utils import build_url_aliases, get_anthropic_client, get_openai_client, token_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ def _call_model(prompt: str, model: str, client, max_tokens: int = 4096) -> str:
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
         )
+        token_tracker.track(model, response.usage.prompt_tokens, response.usage.completion_tokens)
         return response.choices[0].message.content.strip()
     else:
         response = client.messages.create(
@@ -43,6 +44,7 @@ def _call_model(prompt: str, model: str, client, max_tokens: int = 4096) -> str:
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
+        token_tracker.track(model, response.usage.input_tokens, response.usage.output_tokens)
         return response.content[0].text.strip()
 
 

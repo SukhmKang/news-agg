@@ -14,7 +14,7 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from utils import load_articles, is_within_window
+from utils import load_articles, is_within_window, token_tracker
 from pipeline.report import write_report
 
 logging.basicConfig(
@@ -64,6 +64,7 @@ def run() -> None:
     filepath = write_report(week_articles, week_end_date=week_end)
 
     logger.info(f"=== Weekly report complete: {filepath} ===")
+    logger.info(token_tracker.summary())
 
 
 if __name__ == "__main__":

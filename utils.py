@@ -100,6 +100,55 @@ def get_anthropic_client() -> Anthropic:
     return Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
+# ---------------------------------------------------------------------------
+# Token / cost tracking
+# ---------------------------------------------------------------------------
+
+class TokenTracker:
+    """Accumulates token usage across all model calls in a run.
+
+    Pricing is approximate and should be verified against provider pricing pages.
+    """
+
+    # (input $/1M, output $/1M)
+    _PRICING = {
+        "gpt-4o":            (2.50, 10.00),
+        "gpt-4.1":           (2.00,  8.00),
+        "claude-haiku-4-5":  (1.00,  5.00),
+        "claude-sonnet-4-6": (3.00, 15.00),
+    }
+    _DEFAULT_PRICING = (3.00, 15.00)
+
+    def __init__(self):
+        self._by_model: dict = {}
+
+    def track(self, model: str, input_tokens: int, output_tokens: int) -> None:
+        if model not in self._by_model:
+            self._by_model[model] = {"input": 0, "output": 0, "calls": 0}
+        self._by_model[model]["input"]  += input_tokens
+        self._by_model[model]["output"] += output_tokens
+        self._by_model[model]["calls"]  += 1
+
+    def summary(self) -> str:
+        if not self._by_model:
+            return "Token usage: no model calls recorded"
+        lines = ["Token usage summary:"]
+        total_cost = 0.0
+        for model, stats in self._by_model.items():
+            price_in, price_out = self._PRICING.get(model, self._DEFAULT_PRICING)
+            cost = (stats["input"] * price_in + stats["output"] * price_out) / 1_000_000
+            total_cost += cost
+            lines.append(
+                f"  {model}: {stats['input']:,} in + {stats['output']:,} out "
+                f"({stats['calls']} call{'s' if stats['calls'] != 1 else ''}) ≈ ${cost:.4f}"
+            )
+        lines.append(f"  ── Total estimated cost: ${total_cost:.4f}")
+        return "\n".join(lines)
+
+
+token_tracker = TokenTracker()
+
+
 def get_openai_client():
     from openai import OpenAI
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

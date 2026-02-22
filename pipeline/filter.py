@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List
 
 from config import FILTER_BATCH_SIZE, FILTER_MAX_WORKERS, MENA_KEYWORDS, MODEL_FILTER, SCORE_THRESHOLD
-from utils import build_url_aliases, get_anthropic_client, get_openai_client, get_client_names
+from utils import build_url_aliases, get_anthropic_client, get_openai_client, get_client_names, token_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,7 @@ def _score_batch(batch: List[Dict], client_names: List[str], client) -> List[Dic
             max_tokens=8096,
             response_format={"type": "json_object"},
         )
+        token_tracker.track(MODEL_FILTER, response.usage.prompt_tokens, response.usage.completion_tokens)
         text = response.choices[0].message.content.strip()
         parsed = json.loads(text)
         results = parsed.get("results", [])
@@ -104,6 +105,7 @@ def _score_batch(batch: List[Dict], client_names: List[str], client) -> List[Dic
             max_tokens=8096,
             messages=[{"role": "user", "content": prompt}],
         )
+        token_tracker.track(MODEL_FILTER, response.usage.input_tokens, response.usage.output_tokens)
         if response.stop_reason == "max_tokens":
             raise RuntimeError(
                 f"Claude scoring response was truncated (max_tokens reached) on a batch of "
