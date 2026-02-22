@@ -38,7 +38,10 @@ def run_enrichment(articles: List[Dict]) -> List[Dict]:
         title_short = query[:60]
         logger.info(f"  [{i}/{len(high_score)}] {title_short}...")
         results = tavily_search(query, days=TAVILY_DAYS, max_results=5)
-        article["corroboration"] = [r for r in results if r.get("url") != url][:4]
+        article["corroboration"] = [
+            r for r in results
+            if r.get("url") != url and r.get("tavily_score", 0.0) >= 0.8
+        ][:4]
 
     for article in articles:
         article["enriched"] = True

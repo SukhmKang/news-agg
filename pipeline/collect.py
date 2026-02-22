@@ -83,9 +83,13 @@ def _fetch_feed(
         return []
 
     new_articles = []
+    skipped_existing = 0
     for entry in feed.entries:
         link = entry.get("link", "") or entry.get("id", "")
-        if not link or link in existing_urls:
+        if not link:
+            continue
+        if link in existing_urls:
+            skipped_existing += 1
             continue
 
         article = _parse_entry(entry, source)
@@ -106,9 +110,9 @@ def _fetch_feed(
 
     if len(new_articles) > MAX_ARTICLES_PER_FEED:
         new_articles = new_articles[:MAX_ARTICLES_PER_FEED]
-        logger.info(f"  {source}: {len(new_articles)} new articles (capped at {MAX_ARTICLES_PER_FEED})")
+        logger.info(f"  {source}: {len(new_articles)} new articles (capped at {MAX_ARTICLES_PER_FEED}), {skipped_existing} skipped (already in store)")
     else:
-        logger.info(f"  {source}: {len(new_articles)} new articles")
+        logger.info(f"  {source}: {len(new_articles)} new articles, {skipped_existing} skipped (already in store)")
     if LOG_COLLECTED_TITLES and new_articles:
         for a in new_articles:
             logger.info(f"    | {a['title']}")
@@ -191,28 +195,33 @@ def run_tavily_collection(existing_urls: set) -> List[Dict]:
     for query in all_queries:
         results = tavily_search(query, days=TAVILY_DAYS, max_results=TAVILY_MAX_RESULTS)
         added = 0
+        skipped = 0
         for r in results:
             url = r.get("url", "")
-            if url and url not in existing_urls:
-                existing_urls.add(url)
-                new_articles.append({
-                    "url": url,
-                    "title": r.get("title", ""),
-                    "snippet": r.get("snippet", "")[:1000],
-                    "source": r.get("source", "tavily"),
-                    "pub_date": None,
-                    "score": None,
-                    "score_reason": None,
-                    "category": None,
-                    "client_match": [],
-                    "full_text": None,
-                    "corroboration": [],
-                    "enriched": False,
-                    "run_date": run_date,
-                })
-                added += 1
-        if added:
-            logger.info(f"  [{added}] {query}")
+            if not url:
+                continue
+            if url in existing_urls:
+                skipped += 1
+                logger.debug(f"  Skipped (already in store): {url}")
+                continue
+            existing_urls.add(url)
+            new_articles.append({
+                "url": url,
+                "title": r.get("title", ""),
+                "snippet": r.get("snippet", "")[:1000],
+                "source": r.get("source", "tavily"),
+                "pub_date": r.get("pub_date"),
+                "score": None,
+                "score_reason": None,
+                "category": None,
+                "client_match": [],
+                "full_text": None,
+                "corroboration": [],
+                "enriched": False,
+                "run_date": run_date,
+            })
+            added += 1
+        logger.info(f"  [{added} new, {skipped} skipped] {query}")
 
     logger.info(f"Step 1b complete: {len(new_articles)} new articles from Tavily")
     return new_articles

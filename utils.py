@@ -137,6 +137,7 @@ def tavily_search(query: str, days: int = 7, max_results: int = 8) -> List[Dict]
                 "snippet": r.get("content", ""),
                 "source": "tavily",
                 "pub_date": r.get("published_date"),
+                "tavily_score": r.get("score", 0.0),
             }
             for r in response.get("results", [])
             if r.get("url")
