@@ -193,4 +193,5 @@ def run_filter(articles: List[Dict]) -> List[Dict]:
     logger.info(
         f"Step 2 complete: {len(passing)} articles pass (score ≥ {SCORE_THRESHOLD}), {dropped} dropped"
     )
+
     return passing

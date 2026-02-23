@@ -178,32 +178,22 @@ def run_tavily_collection(existing_urls: set) -> List[Dict]:
     """
     run_date = datetime.now(timezone.utc).date().isoformat()
 
-    # Build client queries: two per client using the primary name
-    client_queries: List[str] = []
-    for c in load_clients():
-        name = c["name"]
-        client_queries.append(f"{name} UAE OR Saudi Arabia OR MENA OR Gulf")
-        client_queries.append(f"{name} Middle East")
-
-    all_queries = TAVILY_STATIC_QUERIES + client_queries
-    logger.info(
-        f"Step 1b — {len(TAVILY_STATIC_QUERIES)} static + {len(client_queries)} client "
-        f"Tavily queries ({len(all_queries)} total):"
-    )
-
-    new_articles: List[Dict] = []
-    for query in all_queries:
-        results = tavily_search(query, days=TAVILY_DAYS, max_results=TAVILY_MAX_RESULTS)
-        added = 0
-        skipped = 0
+    def _add_results(results, existing_urls, new_articles, query, name_filter=None):
+        """Add Tavily results to new_articles, optionally filtering by required name."""
+        added = skipped_existing = skipped_irrelevant = 0
         for r in results:
             url = r.get("url", "")
             if not url:
                 continue
             if url in existing_urls:
-                skipped += 1
+                skipped_existing += 1
                 logger.debug(f"  Skipped (already in store): {url}")
                 continue
+            if name_filter:
+                text = (r.get("title", "") + " " + r.get("snippet", "")).lower()
+                if not any(n in text for n in name_filter):
+                    skipped_irrelevant += 1
+                    continue
             existing_urls.add(url)
             new_articles.append({
                 "url": url,
@@ -221,7 +211,30 @@ def run_tavily_collection(existing_urls: set) -> List[Dict]:
                 "run_date": run_date,
             })
             added += 1
-        logger.info(f"  [{added} new, {skipped} skipped] {query}")
+        detail = f"{skipped_irrelevant} irrelevant, " if skipped_irrelevant else ""
+        logger.info(f"  [{added} new, {detail}{skipped_existing} skipped] {query}")
+
+    new_articles: List[Dict] = []
+
+    # --- Static queries (no client filter) ---
+    logger.info(f"Step 1b — {len(TAVILY_STATIC_QUERIES)} static Tavily queries:")
+    for query in TAVILY_STATIC_QUERIES:
+        results = tavily_search(query, days=TAVILY_DAYS, max_results=TAVILY_MAX_RESULTS)
+        _add_results(results, existing_urls, new_articles, query)
+
+    # --- Per-client queries (filter results to articles that mention the client) ---
+    clients = load_clients()
+    logger.info(f"Step 1b — {len(clients)} client Tavily queries:")
+    for c in clients:
+        name = c["name"]
+        name_filter = [n.lower() for n in [name] + c.get("aliases", [])]
+        for query in [
+            f"{name} UAE",
+            f"{name} Saudi Arabia",
+            f"{name} Middle East",
+        ]:
+            results = tavily_search(query, days=TAVILY_DAYS, max_results=TAVILY_MAX_RESULTS)
+            _add_results(results, existing_urls, new_articles, query, name_filter=name_filter)
 
     logger.info(f"Step 1b complete: {len(new_articles)} new articles from Tavily")
     return new_articles
