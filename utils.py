@@ -112,6 +112,7 @@ class TokenTracker:
 
     # (input $/1M, output $/1M)
     _PRICING = {
+        "gpt-5.2":           (1.75, 14.00),
         "gpt-4o":            (2.50, 10.00),
         "gpt-4.1":           (2.00,  8.00),
         "claude-haiku-4-5":  (1.00,  5.00),

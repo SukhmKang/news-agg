@@ -12,9 +12,7 @@ import os
 RSS_FEEDS = [
     ("arabianbusiness.com", "https://www.arabianbusiness.com/feed",       None),
     ("gulfbusiness.com",    "https://gulfbusiness.com/feed/",             None),
-    ("al-monitor.com",      "https://www.al-monitor.com/rss",            None),
-    # Al Jazeera: native feed works, Google News RSS returns 0. Title-filtered here.
-    ("aljazeera.com",       "https://aljazeera.com/xml/rss/all.xml",     "MENA_KEYWORDS"),
+
 ]
 
 # Keywords used to:
@@ -75,32 +73,6 @@ MENA_KEYWORDS = [
 # Multiple entries per site = multiple queries, giving broader category coverage.
 GOOGLE_NEWS_QUERIES = [
 
-    # --- Asharq Al-Awsat (moved from full feed — output too broad) ---
-    ("aawsat.com", "english.aawsat.com",
-        'UAE OR "Saudi Arabia" foreign company expand headquarters invest'),
-    ("aawsat.com", "english.aawsat.com",
-        'Dubai OR Riyadh foreign company expand headquarters invest'),
-    ("aawsat.com", "english.aawsat.com",
-        'PIF OR Mubadala OR ADIA OR ADQ'),
-    ("aawsat.com", "english.aawsat.com",
-        '"Vision 2030" OR NEOM foreign company invest'),
-
-    # --- Times of Israel ---
-    ("timesofisrael.com", "timesofisrael.com",
-        'UAE OR "Saudi Arabia" business invest expand headquarters'),
-    ("timesofisrael.com", "timesofisrael.com",
-        'Dubai OR Riyadh business invest expand headquarters'),
-    ("timesofisrael.com", "timesofisrael.com",
-        '"Abraham Accords" UAE business deal invest expand'),
-
-    # --- Jerusalem Post ---
-    ("jpost.com", "jpost.com",
-        'UAE OR "Saudi Arabia" MENA business invest expand foreign company'),
-    ("jpost.com", "jpost.com",
-        'Dubai OR Riyadh business invest expand foreign company'),
-    ("jpost.com", "jpost.com",
-        '"Abraham Accords" OR Gulf invest business normalize'),
-
     # --- Zawya (highest-yield) ---
     ("zawya.com", "zawya.com",
         'foreign company expand headquarters "market entry" launch UAE OR "Saudi Arabia" OR MENA'),
@@ -119,18 +91,6 @@ GOOGLE_NEWS_QUERIES = [
     ("zawya.com", "zawya.com",
         'Dubai OR Riyadh foreign company announce launch 2026'),
 
-    # --- Anadolu Agency ---
-    ("aa.com.tr", "aa.com.tr",
-        'UAE OR "Saudi Arabia" MENA business invest expand headquarters foreign company'),
-    ("aa.com.tr", "aa.com.tr",
-        'Dubai OR Riyadh business invest expand headquarters foreign company'),
-    ("aa.com.tr", "aa.com.tr",
-        'PIF OR Mubadala OR ADIA OR ADQ'),
-    ("aa.com.tr", "aa.com.tr",
-        'QIA OR Kuwait OR Mumtalakat sovereign wealth invest'),
-
-    # Amwaj Media: no native RSS feed and not indexed on Google News RSS.
-    # Occasional articles may surface via Tavily static search (Step 1b).
 ]
 
 # ---------------------------------------------------------------------------
@@ -143,34 +103,38 @@ GOOGLE_NEWS_QUERIES = [
 TAVILY_STATIC_QUERIES = [
 
     # --- SWF / state entity outbound investment ---
-    "PIF investment acquisition stake 2026",
-    "Mubadala investment acquisition outside MENA 2026",
-    "ADIA investment stake acquisition 2026",
-    "ADQ investment acquisition 2026",
-    "QIA Qatar Investment Authority investment acquisition stake 2026",
-    "Kuwait Investment Authority deal investment 2026",
-    "Mumtalakat investment deal 2026",
-    "Gulf sovereign wealth fund outbound investment deal 2026",
-    "sovereign wealth fund UAE Saudi Arabia acquisition investment 2026",
+    "PIF investment acquisition stake",
+    "Mubadala investment acquisition outside MENA",
+    "ADIA investment stake acquisition",
+    "ADQ investment acquisition",
+    "QIA Qatar Investment Authority investment acquisition stake",
+    "Kuwait Investment Authority deal investment",
+    "Mumtalakat investment deal",
+    "Gulf sovereign wealth fund outbound investment deal",
+    "sovereign wealth fund UAE Saudi Arabia acquisition investment",
 
     # --- Saudi strategic programs ---
-    "Vision 2030 foreign company invest 2026",
-    "NEOM foreign company partner 2026",
-    "RHQP regional headquarters Saudi Arabia foreign company",
-    "Saudi giga project foreign company partner invest",
+    "Vision 2030 foreign company investment",
+    "RHQ Regional Headquarters Program foreign company announcements",
+    "Saudi giga-project foreign company partnerships or investment",
 
     # --- Category 1: foreign company market entry ---
-    "Western company UAE Saudi Arabia regional headquarters 2026",
-    "foreign company Dubai Abu Dhabi office launch 2026",
-    "US company Saudi Arabia expand market entry 2026",
-    "European company UAE market entry 2026",
-    "foreign company Riyadh regional hub establish 2026",
+    "U.S. company UAE or Saudi Arabia regional headquarters",
+    "European company UAE or Saudi Arabia regional headquarters",
+    "U.S. company Dubai or Abu Dhabi office launch",
+    "European company Dubai or Abu Dhabi office launch",
+    "U.S. company Saudi Arabia expansion or market entry",
+    "European company Saudi Arabia expansion or market entry",
+    "U.S. company UAE market entry",
+    "European company UAE market entry",
+    "U.S. company Riyadh regional hub establishment",
+    "European company Riyadh regional hub establishment",
 
     # --- Category 3: PR / policy friction ---
-    "foreign company Saudi Arabia controversy backlash 2026",
-    "foreign company UAE policy obstacle regulatory 2026",
-    "company banned Saudi Arabia 2026",
-    "company controversy Gulf region 2026",
+    "foreign company Saudi Arabia controversy backlash",
+    "foreign company UAE policy obstacle regulatory",
+    "company banned Saudi Arabia",
+    "company controversy Gulf region",
 ]
 
 # ---------------------------------------------------------------------------
@@ -204,6 +168,7 @@ REPORT_BATCH_SIZE = 15    # Max articles per category sub-batch — larger categ
 CATEGORY_ORDER = [
     ("market_entry",   "Market Entry & Regional HQ Announcements"),
     ("swf_outbound",   "SWF & State Capital Flows"),
+    ("signed_mou",     "Signed Government MOUs"),
     ("pr_policy_risk", "Policy & PR Risk Watch"),
 ]
 
@@ -222,6 +187,6 @@ REPORTS_DIR = "reports"
 # ---------------------------------------------------------------------------
 
 MODEL_QUERY_GEN    = "claude-haiku-4-5"  # Step 1b: generate follow-up search queries
-MODEL_FILTER       = "gpt-4o"           # Step 2:  relevance scoring
+MODEL_FILTER       = "gpt-5.2"          # Step 2:  relevance scoring
 MODEL_REPORT_BATCH = "gpt-4o"           # Step 4:  sub-batch section writing (article → prose)
 MODEL_REPORT_SYNTH = "gpt-4.1"         # Step 4:  section merging + executive summary synthesis

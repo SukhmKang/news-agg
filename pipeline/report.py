@@ -31,10 +31,11 @@ logger = logging.getLogger(__name__)
 def _call_model(prompt: str, model: str, client, max_tokens: int = 4096) -> str:
     """Call Claude or GPT — provider detected from model name."""
     if model.startswith("gpt-") or model.startswith("o"):
+        token_key = "max_completion_tokens" if model == "gpt-5.2" else "max_tokens"
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
+            **{token_key: max_tokens},
         )
         token_tracker.track(model, response.usage.prompt_tokens, response.usage.completion_tokens)
         return response.choices[0].message.content.strip()

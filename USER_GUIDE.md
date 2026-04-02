@@ -153,7 +153,7 @@ Articles are saved as a flat JSON array in `data/articles.json`. Each article in
 | `run_date` | Date the pipeline collected the article |
 | `score` | GPT-4o relevance score (1–5) |
 | `score_reason` | One-line explanation of the score |
-| `category` | `market_entry`, `swf_outbound`, or `pr_policy_risk` |
+| `category` | `market_entry`, `swf_outbound`, `signed_mou`, or `pr_policy_risk` |
 | `client_match` | List of matched client names |
 | `corroboration` | List of corroborating articles from Tavily (score 4–5 only), each with `tavily_score` |
 | `enriched` | `true` once Step 3 has run |

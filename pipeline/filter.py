@@ -40,13 +40,14 @@ def _build_scoring_prompt(articles: List[Dict], client_names: List[str], url_to_
 Score each article 1–5 on relevance and actionability for our BD team.
 
 === GEOGRAPHIC PRIORITY ===
-Primary markets: UAE (Dubai, Abu Dhabi) and Saudi Arabia (Riyadh, Jeddah, NEOM).
+Primary markets: UAE (Dubai, Abu Dhabi) and Saudi Arabia (Riyadh, Jeddah).
 Secondary markets: broader GCC (Qatar, Kuwait, Bahrain, Oman) and wider MENA.
-- Articles exclusively about secondary/broader MENA markets are capped at score 3 unless they involve a named UAE or Saudi actor, capital flow, or direct strategic implication for our primary markets.
+
 
 === INCLUDE (score 3–5) ===
-- Foreign (primarily Western) companies publicly announcing entry into UAE or Saudi Arabia, or establishing a regional headquarters there
-- UAE or Saudi sovereign wealth funds or state-owned entities (PIF, Mubadala, ADIA, ADQ, Aramco, ADNOC, DP World, etc.) investing capital outside the region; intergovernmental agreements that result in investments
+- U.S. and European companies publicly announcing entry into UAE or Saudi Arabia, or establishing a regional headquarters there
+- UAE or Saudi sovereign wealth funds or state-owned entities (PIF, Mubadala, ADIA, ADQ, Aramco, ADNOC, DP World, etc.) investing capital outside the region; ]
+- Signed Memoranda of Understanding between a MENA government and a country outside of the region that will result in companies investing in MENA.
 - Foreign companies facing policy obstacles or requiring PR assistance following public fallout in UAE or Saudi Arabia
 - Big-picture Saudi or UAE strategic positioning relevant to market entry or capital flows
 
@@ -67,10 +68,12 @@ Secondary markets: broader GCC (Qatar, Kuwait, Bahrain, Oman) and wider MENA.
 1 — Not relevant: falls squarely into the exclusion list.
 
 === CATEGORIES ===
-Use one of: "market_entry", "swf_outbound", "pr_policy_risk", "none"
+Use one of: "market_entry", "swf_outbound", "signed_mou", "pr_policy_risk", "none"
 
 === CLIENT MONITORING ===
 If any of the following names appear in the article, list them in client_match: {clients_str}
+
+If a tracked client is directly mentioned in the article AND the article relates to their activity or presence in the Middle East, Gulf, or MENA region, the article must score 4 or 5 regardless of other criteria.
 
 === ARTICLES TO SCORE ===
 {articles_payload}
@@ -89,10 +92,11 @@ def _score_batch(batch: List[Dict], client_names: List[str], client) -> List[Dic
     prompt = _build_scoring_prompt(batch, client_names, url_to_alias, openai_mode=is_openai)
 
     if is_openai:
+        token_key = "max_completion_tokens" if MODEL_FILTER == "gpt-5.2" else "max_tokens"
         response = client.chat.completions.create(
             model=MODEL_FILTER,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=8096,
+            **{token_key: 8096},
             response_format={"type": "json_object"},
         )
         token_tracker.track(MODEL_FILTER, response.usage.prompt_tokens, response.usage.completion_tokens)
